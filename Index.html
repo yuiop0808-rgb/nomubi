@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>건설 노무비 산정 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2330;
+    --border: #30363d;
+    --accent: #f0a500;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --danger: #f85149;
+    --success: #3fb950;
+    --steel: #58a6ff;
+    --siteA: #f0a500;
+    --siteB: #58a6ff;
+    --siteC: #3fb950;
+    --siteD: #bc8cff;
+    --siteE: #ff7b7b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Noto Sans KR',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* ── 헤더 ── */
+  header {
+    background:var(--surface); border-bottom:2px solid var(--accent);
+    padding:0 24px; display:flex; align-items:center; justify-content:space-between;
+    height:64px; position:sticky; top:0; z-index:200;
+  }
+  .logo { display:flex; align-items:center; gap:12px; }
+  .logo-icon {
+    width:36px; height:36px; background:var(--accent);
+    clip-path:polygon(50% 0%,100% 25%,100% 75%,50% 100%,0% 75%,0% 25%);
+    display:flex; align-items:center; justify-content:center; font-size:18px;
+  }
+  .logo-text { font-size:18px; font-weight:900; letter-spacing:-0.5px; }
+  .logo-text span { color:var(--accent); }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .date-display {
+    font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--accent);
+    background:rgba(240,165,0,0.1); border:1px solid rgba(240,165,0,0.3);
+    padding:6px 14px; border-radius:4px;
+  }
+  .btn-print {
+    background:var(--surface2); color:var(--text); border:1px solid var(--border);
+    font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:600;
+    padding:8px 16px; border-radius:6px; cursor:pointer; transition:all 0.2s;
+  }
+  .btn-print:hover { border-color:var(--accent); color:var(--accent); }
+
+  /* ── 컨테이너 ── */
+  .container { max-width:1440px; margin:0 auto; padding:24px; }
+
+  /* ── 상단바 ── */
+  .top-bar { display:grid; grid-template-columns:220px 1fr; gap:16px; margin-bottom:20px; align-items:start; }
+  .date-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:18px 20px; }
+  .card-label { display:block; font-size:11px; font-weight:700; letter-spacing:1px; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px; }
+  .date-card input[type="date"] {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:600;
+    padding:9px 12px; border-radius:6px; width:100%; outline:none; cursor:pointer; transition:border-color 0.2s;
+  }
+  .date-card input[type="date"]:focus { border-color:var(--accent); }
+  .stats-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+  .stat-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:18px 20px; position:relative; overflow:hidden;
+  }
+  .stat-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .stat-card.c-orange::before { background:var(--accent); }
+  .stat-card.c-blue::before   { background:var(--steel); }
+  .stat-card.c-green::before  { background:var(--success); }
+  .stat-label { font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; }
+  .stat-value { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:600; }
+  .sv-orange { color:var(--accent); } .sv-blue { color:var(--steel); } .sv-green { color:var(--success); }
+  .stat-sub { font-size:11px; color:var(--text-muted); margin-top:4px; }
+
+  /* ── 현장 설정 카드 ── */
+  .site-setup-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    margin-bottom:20px; overflow:hidden;
+  }
+  .ssc-header {
+    padding:14px 20px; border-bottom:1px solid var(--border);
+    font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted);
+    display:flex; align-items:center; gap:8px;
+  }
+  .ssc-header::before { content:''; display:inline-block; width:3px; height:13px; background:var(--accent); border-radius:2px; }
+  .site-inputs-row {
+    display:grid; grid-template-columns:repeat(5,1fr); gap:0;
+  }
+  .site-input-cell {
+    padding:16px 18px; border-right:1px solid var(--border); position:relative;
+  }
+  .site-input-cell:last-child { border-right:none; }
+  .sic-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .sic-badge {
+    width:28px; height:28px; border-radius:6px; font-family:'JetBrains Mono',monospace;
+    font-size:14px; font-weight:900; display:flex; align-items:center; justify-content:center;
+  }
+  .badge-A { background:rgba(240,165,0,0.15); color:var(--siteA); }
+  .badge-B { background:rgba(88,166,255,0.15); color:var(--siteB); }
+  .badge-C { background:rgba(63,185,80,0.15);  color:var(--siteC); }
+  .badge-D { background:rgba(188,140,255,0.15);color:var(--siteD); }
+  .badge-E { background:rgba(255,123,123,0.15);color:var(--siteE); }
+  .sic-letter { font-size:12px; font-weight:700; color:var(--text-muted); }
+  .sic-count { font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--text-muted); background:var(--surface2); border:1px solid var(--border); padding:1px 7px; border-radius:10px; margin-left:auto; }
+  .site-name-input {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:500;
+    padding:8px 11px; border-radius:6px; width:100%; outline:none; transition:border-color 0.2s;
+  }
+  .site-name-input:focus { border-color:var(--accent); }
+  .site-name-input::placeholder { color:var(--text-muted); font-weight:400; }
+
+  /* ── 현장별 합계 카드 ── */
+  .site-totals { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+  .stc {
+    background:var(--surface); border:1px solid var(--border); border-radius:8px;
+    padding:14px 16px; cursor:pointer; transition:all 0.2s; position:relative; overflow:hidden;
+  }
+  .stc::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .stc-A::before { background:var(--siteA); } .stc-B::before { background:var(--siteB); }
+  .stc-C::before { background:var(--siteC); } .stc-D::before { background:var(--siteD); }
+  .stc-E::before { background:var(--siteE); }
+  .stc:hover { transform:translateY(-2px); border-color:var(--text-muted); }
+  .stc.active-view { border-width:2px; }
+  .stc-A.active-view { border-color:var(--siteA); }
+  .stc-B.active-view { border-color:var(--siteB); }
+  .stc-C.active-view { border-color:var(--siteC); }
+  .stc-D.active-view { border-color:var(--siteD); }
+  .stc-E.active-view { border-color:var(--siteE); }
+  .stc-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .stc-badge { width:26px; height:26px; border-radius:5px; font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:900; display:flex; align-items:center; justify-content:center; }
+  .stc-name { font-size:12px; font-weight:600; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px; }
+  .stc-amount { font-family:'JetBrains Mono',monospace; font-size:16px; font-weight:700; margin-bottom:3px; }
+  .stc-A .stc-badge { background:rgba(240,165,0,0.15); color:var(--siteA); }
+  .stc-B .stc-badge { background:rgba(88,166,255,0.15); color:var(--siteB); }
+  .stc-C .stc-badge { background:rgba(63,185,80,0.15);  color:var(--siteC); }
+  .stc-D .stc-badge { background:rgba(188,140,255,0.15);color:var(--siteD); }
+  .stc-E .stc-badge { background:rgba(255,123,123,0.15);color:var(--siteE); }
+  .stc-A .stc-amount { color:var(--siteA); } .stc-B .stc-amount { color:var(--siteB); }
+  .stc-C .stc-amount { color:var(--siteC); } .stc-D .stc-amount { color:var(--siteD); }
+  .stc-E .stc-amount { color:var(--siteE); }
+  .stc-count { font-size:11px; color:var(--text-muted); }
+
+  /* ── 입력 섹션 ── */
+  .input-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px 24px; margin-bottom:20px; }
+  .section-title { font-size:12px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+  .section-title::before { content:''; display:inline-block; width:3px; height:13px; background:var(--accent); border-radius:2px; }
+
+  /* 현장 선택 버튼 */
+  .site-picker { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+  .sp-label { font-size:12px; font-weight:700; color:var(--text-muted); letter-spacing:0.5px; text-transform:uppercase; margin-right:4px; }
+  .spbtn {
+    display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:6px;
+    cursor:pointer; border:1.5px solid var(--border); background:var(--surface2);
+    font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:600;
+    color:var(--text-muted); transition:all 0.2s;
+  }
+  .spbtn:hover { border-color:var(--text-muted); color:var(--text); }
+  .spbtn .dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .spbtn-A .dot { background:var(--siteA); } .spbtn-B .dot { background:var(--siteB); }
+  .spbtn-C .dot { background:var(--siteC); } .spbtn-D .dot { background:var(--siteD); }
+  .spbtn-E .dot { background:var(--siteE); }
+  .spbtn.sel-A { border-color:var(--siteA); color:var(--siteA); background:rgba(240,165,0,0.08); }
+  .spbtn.sel-B { border-color:var(--siteB); color:var(--siteB); background:rgba(88,166,255,0.08); }
+  .spbtn.sel-C { border-color:var(--siteC); color:var(--siteC); background:rgba(63,185,80,0.08); }
+  .spbtn.sel-D { border-color:var(--siteD); color:var(--siteD); background:rgba(188,140,255,0.08); }
+  .spbtn.sel-E { border-color:var(--siteE); color:var(--siteE); background:rgba(255,123,123,0.08); }
+
+  .input-grid { display:grid; grid-template-columns:1fr 155px 1fr 145px auto; gap:12px; align-items:end; }
+  .fg { display:flex; flex-direction:column; gap:5px; }
+  .fg label { font-size:11px; font-weight:600; letter-spacing:0.5px; color:var(--text-muted); text-transform:uppercase; }
+  .fg input, .fg select {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text);
+    font-family:'Noto Sans KR',sans-serif; font-size:14px; padding:9px 12px; border-radius:6px;
+    outline:none; transition:border-color 0.2s; width:100%;
+  }
+  .fg input:focus, .fg select:focus { border-color:var(--accent); background:rgba(240,165,0,0.04); }
+  .fg select option { background:var(--surface2); }
+  .btn-add {
+    background:var(--accent); color:#000; border:none; font-family:'Noto Sans KR',sans-serif;
+    font-size:14px; font-weight:700; padding:9px 22px; border-radius:6px; cursor:pointer;
+    transition:all 0.2s; white-space:nowrap; height:40px;
+  }
+  .btn-add:hover { background:#ffc107; transform:translateY(-1px); }
+
+  /* ── 테이블 ── */
+  .table-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:20px; overflow:visible; }
+
+  /* 뷰 탭 */
+  .view-tabs { display:flex; border-bottom:1px solid var(--border); padding:0 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:8px 8px 0 0; }
+  .vtab {
+    display:flex; align-items:center; gap:6px; padding:12px 16px; cursor:pointer;
+    border-bottom:3px solid transparent; margin-bottom:-1px;
+    font-size:13px; font-weight:600; color:var(--text-muted); white-space:nowrap;
+    background:none; border-left:none; border-right:none; border-top:none;
+    font-family:'Noto Sans KR',sans-serif; transition:all 0.2s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .vtab:hover { color:var(--text); }
+  .vtab.vt-all.active  { border-bottom-color:var(--accent);  color:var(--accent); }
+  .vtab.vt-A.active    { border-bottom-color:var(--siteA);   color:var(--siteA); }
+  .vtab.vt-B.active    { border-bottom-color:var(--siteB);   color:var(--siteB); }
+  .vtab.vt-C.active    { border-bottom-color:var(--siteC);   color:var(--siteC); }
+  .vtab.vt-D.active    { border-bottom-color:var(--siteD);   color:var(--siteD); }
+  .vtab.vt-E.active    { border-bottom-color:var(--siteE);   color:var(--siteE); }
+  .vtab .vdot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .vdot-A { background:var(--siteA); } .vdot-B { background:var(--siteB); }
+  .vdot-C { background:var(--siteC); } .vdot-D { background:var(--siteD); }
+  .vdot-E { background:var(--siteE); }
+
+  .table-header { padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .th-left { display:flex; flex-direction:column; gap:3px; }
+  .th-site-label { font-size:12px; font-weight:600; margin-top:2px; }
+  .table-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .btn-sm { font-family:'Noto Sans KR',sans-serif; font-size:12px; font-weight:600; padding:8px 14px; border-radius:5px; border:1px solid; cursor:pointer; transition:all 0.2s; -webkit-tap-highlight-color:transparent; min-height:36px; }
+  .btn-export { background:transparent; color:var(--steel); border-color:var(--steel); }
+  .btn-export:hover, .btn-export:active { background:rgba(88,166,255,0.15); }
+  .btn-clear  { background:transparent; color:var(--danger); border-color:var(--danger); }
+  .btn-clear:hover, .btn-clear:active  { background:rgba(248,81,73,0.15); }
+
+  /* 테이블 래퍼: 가로 스크롤 허용 */
+  .table-scroll-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; width:100%; }
+
+  table { width:100%; border-collapse:collapse; min-width:520px; }
+  thead tr { background:var(--surface2); border-bottom:1px solid var(--border); }
+  th { padding:11px 12px; text-align:left; font-size:11px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--text-muted); white-space:nowrap; }
+  th:first-child { width:44px; text-align:center; }
+  th.th-site-col { width:60px; }
+  th:last-child { width:60px; text-align:center; }
+  tbody tr { border-bottom:1px solid rgba(48,54,61,0.5); transition:background 0.15s; }
+  tbody tr:hover { background:rgba(240,165,0,0.03); }
+  tbody tr:last-child { border-bottom:none; }
+  td { padding:11px 12px; font-size:14px; vertical-align:middle; }
+  td:first-child { text-align:center; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text-muted); font-weight:600; }
+
+  .tag-site { display:inline-flex; align-items:center; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .ts-A { background:rgba(240,165,0,0.12); color:var(--siteA); border:1px solid rgba(240,165,0,0.25); }
+  .ts-B { background:rgba(88,166,255,0.12); color:var(--siteB); border:1px solid rgba(88,166,255,0.25); }
+  .ts-C { background:rgba(63,185,80,0.12);  color:var(--siteC); border:1px solid rgba(63,185,80,0.25); }
+  .ts-D { background:rgba(188,140,255,0.12);color:var(--siteD); border:1px solid rgba(188,140,255,0.25); }
+  .ts-E { background:rgba(255,123,123,0.12);color:var(--siteE); border:1px solid rgba(255,123,123,0.25); }
+  .tag-gong { display:inline-block; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:600; background:rgba(240,165,0,0.1); color:var(--accent); border:1px solid rgba(240,165,0,0.25); white-space:nowrap; }
+  .juminno { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text-muted); letter-spacing:0.5px; white-space:nowrap; }
+  .amount-cell { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--success); text-align:right; white-space:nowrap; }
+  .btn-delete { background:transparent; border:1px solid rgba(248,81,73,0.3); color:var(--danger); font-size:12px; padding:5px 10px; border-radius:4px; cursor:pointer; transition:all 0.2s; display:block; margin:0 auto; font-family:'Noto Sans KR',sans-serif; min-height:32px; -webkit-tap-highlight-color:transparent; }
+  .btn-delete:active { background:rgba(248,81,73,0.15); border-color:var(--danger); }
+  .total-row { background:rgba(240,165,0,0.07) !important; border-top:2px solid rgba(240,165,0,0.35) !important; }
+  .total-row td { font-weight:700; color:var(--accent) !important; font-size:14px; }
+  .empty-state { text-align:center; padding:50px 20px; color:var(--text-muted); }
+  .empty-state .ei { font-size:40px; margin-bottom:12px; opacity:0.3; }
+  .empty-state p { font-size:14px; line-height:1.7; }
+
+  /* ── 인쇄 전체화면 오버레이 ── */
+  .print-overlay {
+    display:none; position:fixed; inset:0; background:#ffffff; color:#111111;
+    z-index:9999; overflow-y:auto; padding:20px;
+    font-family:'Noto Sans KR',sans-serif;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .print-overlay.show { display:block; }
+  .po-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; border-bottom:2px solid #222; padding-bottom:12px; gap:10px; flex-wrap:wrap; }
+  .po-title  { font-size:20px; font-weight:900; color:#111; }
+  .po-meta   { font-size:13px; color:#333; margin-bottom:16px; line-height:1.8; }
+  .po-btns   { display:flex; gap:8px; flex-wrap:wrap; }
+  .po-close  { background:#555; color:#fff; border:none; padding:9px 16px; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; -webkit-tap-highlight-color:transparent; }
+  .po-btn-print { background:#222; color:#fff; border:none; padding:9px 16px; border-radius:6px; font-size:13px; font-weight:700; cursor:pointer; font-family:'Noto Sans KR',sans-serif; -webkit-tap-highlight-color:transparent; }
+  .po-hint-box { background:#f5f5f5; border:1px solid #ddd; border-radius:8px; padding:14px 16px; margin-bottom:16px; font-size:13px; color:#444; line-height:1.8; }
+  .po-hint-box strong { color:#111; }
+  .po-hint-box ol { padding-left:18px; margin-top:6px; }
+  .po-hint-box li { margin-bottom:4px; }
+  .po-table { width:100%; border-collapse:collapse; font-size:13px; margin-bottom:20px; color:#111; }
+  .po-table th { background:#eeeeee !important; border:1px solid #aaa; padding:9px 10px; text-align:left; font-weight:700; color:#111 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .po-table td { border:1px solid #bbb; padding:9px 10px; color:#111 !important; }
+  .po-table tr:nth-child(even) td { background:#fafafa !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .po-total-row td { background:#fff8e1 !important; font-weight:800 !important; color:#333 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .po-summary-title { font-size:13px; font-weight:700; color:#333; margin:0 0 8px; }
+  .po-summary { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; margin-bottom:20px; }
+  .po-sum-item { border:1px solid #ccc; border-radius:6px; padding:9px 12px; display:flex; justify-content:space-between; align-items:center; background:#fff; }
+  .po-sum-item span { font-size:12px; color:#333; }
+  .po-sum-item b { font-size:12px; color:#111; }
+  .po-divider { border:none; border-top:1px solid #ddd; margin:16px 0; }
+  @media(max-width:480px){
+    .po-table { font-size:11px; }
+    .po-table th, .po-table td { padding:6px 7px; }
+    .po-summary { grid-template-columns:1fr 1fr; }
+  }
+
+  /* ── @media print: 오버레이만 인쇄, 나머지 숨김 ── */
+  @media print {
+    /* 1) 기본적으로 모든 요소 숨김 */
+    body * { visibility: hidden; }
+
+    /* 2) 오버레이와 그 안의 모든 요소만 보이게 */
+    .print-overlay,
+    .print-overlay * { visibility: visible; }
+
+    /* 3) 오버레이를 페이지 전체로 펼침 */
+    .print-overlay {
+      display: block !important;
+      position: absolute !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      height: auto !important;
+      overflow: visible !important;
+      padding: 10px !important;
+      background: #ffffff !important;
+      color: #111111 !important;
+    }
+
+    /* 4) 버튼/안내문 숨김 */
+    .po-btns       { display: none !important; visibility: hidden !important; }
+    .po-hint-box   { display: none !important; visibility: hidden !important; }
+
+    /* 5) 글자·배경 색상 강제 출력 */
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .po-table th {
+      background: #eeeeee !important;
+      color: #111111 !important;
+    }
+    .po-total-row td {
+      background: #fff8e1 !important;
+      color: #111111 !important;
+    }
+  }
+
+  /* ── 공종 요약 ── */
+  .summary-section { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:20px 24px; margin-bottom:20px; }
+  .summary-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(185px,1fr)); gap:10px; margin-top:14px; }
+  .summary-item { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center; }
+  .s-name { font-size:13px; font-weight:600; }
+  .s-sub  { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .s-val  { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; color:var(--accent); }
+
+  /* ── 모달 ── */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:999; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .modal-overlay.show { display:flex; }
+  .modal-box { background:var(--surface); border:1px solid var(--danger); border-radius:12px; padding:30px 34px; max-width:380px; width:90%; text-align:center; animation:mpop 0.2s ease; box-shadow:0 0 40px rgba(248,81,73,0.2); }
+  @keyframes mpop { from{transform:scale(0.85);opacity:0} to{transform:scale(1);opacity:1} }
+  .modal-icon  { font-size:44px; margin-bottom:14px; }
+  .modal-title { font-size:17px; font-weight:800; color:var(--danger); margin-bottom:8px; }
+  .modal-desc  { font-size:14px; color:var(--text-muted); line-height:1.7; margin-bottom:22px; white-space:pre-line; }
+  .modal-btn   { background:var(--danger); color:#fff; border:none; font-family:'Noto Sans KR',sans-serif; font-size:14px; font-weight:700; padding:10px 32px; border-radius:7px; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+  .modal-btn:active { opacity:0.85; }
+
+
+  /* ── 카카오톡 인앱브라우저 경고 배너 ── */
+  .kakao-banner {
+    display: none; position: fixed; top: 0; left: 0; right: 0;
+    z-index: 99999; background: #FEE500; color: #3C1E1E;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25); font-family: 'Noto Sans KR', sans-serif;
+  }
+  .kakao-banner.show { display: block; }
+  .kb-inner { padding: 14px 16px 12px; }
+  .kb-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .kb-title { font-size:15px; font-weight:900; color:#3C1E1E; display:flex; align-items:center; gap:6px; }
+  .kb-close { background:rgba(0,0,0,0.12); border:none; color:#3C1E1E; width:26px; height:26px; border-radius:50%; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .kb-desc { font-size:12px; color:#5a3a1a; line-height:1.7; margin-bottom:10px; }
+  .kb-steps { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap; }
+  .kb-step { background:rgba(0,0,0,0.08); border-radius:6px; padding:6px 10px; font-size:11px; font-weight:700; color:#3C1E1E; display:flex; align-items:center; gap:4px; }
+  .kb-step-num { background:#3C1E1E; color:#FEE500; width:16px; height:16px; border-radius:50%; font-size:10px; font-weight:900; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .kb-btn-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .kb-btn-copy { background:#3C1E1E; color:#FEE500; border:none; padding:10px 16px; border-radius:7px; font-family:'Noto Sans KR',sans-serif; font-size:13px; font-weight:700; cursor:pointer; flex:1; min-width:120px; -webkit-tap-highlight-color:transparent; }
+  .kb-btn-copy:active { opacity:0.8; }
+  .kb-copied { font-size:12px; color:#1a5c2a; font-weight:700; display:none; align-items:center; gap:4px; }
+  .kb-copied.show { display:flex; }
+
+  /* ── 반응형 ── */
+  @media(max-width:1100px){
+    .site-inputs-row{grid-template-columns:repeat(3,1fr)}
+    .site-totals{grid-template-columns:repeat(3,1fr)}
+  }
+  @media(max-width:800px){
+    .top-bar{grid-template-columns:1fr}
+    .stats-grid{grid-template-columns:repeat(3,1fr)}
+    .input-grid{grid-template-columns:1fr 1fr}
+    .site-inputs-row{grid-template-columns:1fr 1fr}
+    .site-totals{grid-template-columns:repeat(2,1fr)}
+    .stat-value{font-size:18px}
+    header{padding:0 14px}
+    .logo-text{font-size:15px}
+    .date-display{font-size:11px; padding:5px 10px}
+    .container{padding:14px}
+  }
+  @media(max-width:480px){
+    .stats-grid{grid-template-columns:1fr}
+    .site-inputs-row{grid-template-columns:1fr 1fr}
+    .site-totals{grid-template-columns:1fr 1fr}
+    .input-grid{grid-template-columns:1fr}
+    .input-grid .fg:last-child{grid-column:1}
+    .table-header{flex-direction:column; align-items:flex-start}
+    .table-actions{width:100%; justify-content:flex-end}
+  }
+</style>
+</head>
+<body>
+
+<!-- 카카오톡 인앱브라우저 감지 배너 -->
+<div class="kakao-banner" id="kakaoBanner">
+  <div class="kb-inner">
+    <div class="kb-top">
+      <div class="kb-title">🟡 카카오톡 브라우저 감지됨</div>
+      <button class="kb-close" onclick="dismissKakaoBanner()">✕</button>
+    </div>
+    <div class="kb-desc">
+      카카오톡 내에서는 <b>이미지 저장, CSV 내보내기, 인쇄</b> 기능이 제한됩니다.<br>
+      아래 방법으로 <b>Safari에서 열면</b> 모든 기능을 사용할 수 있습니다.
+    </div>
+    <div class="kb-steps">
+      <div class="kb-step"><span class="kb-step-num">1</span> 주소 복사</div>
+      <div class="kb-step"><span class="kb-step-num">2</span> Safari 앱 실행</div>
+      <div class="kb-step"><span class="kb-step-num">3</span> 주소창에 붙여넣기</div>
+    </div>
+    <div class="kb-btn-row">
+      <button class="kb-btn-copy" onclick="copyUrlForSafari()">📋 주소 복사하기</button>
+      <span class="kb-copied" id="kbCopied">✅ 복사됨! Safari에 붙여넣으세요</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- 인쇄용 오버레이 (iOS Safari 대응) -->
+<div class="print-overlay" id="printOverlay">
+  <div class="po-header">
+    <div class="po-title">🏗 건설 노무비 산정서</div>
+    <div class="po-btns">
+      <button class="po-btn-print" onclick="doPrint()">🖨 인쇄하기</button>
+      <button class="po-close" onclick="closePrint()">✕ 닫기</button>
+    </div>
+  </div>
+  <div class="po-meta" id="poMeta"></div>
+  <div class="po-hint-box" id="poHintBox">
+    <strong>📱 아이폰에서 인쇄 / 저장하는 방법</strong>
+    <ol>
+      <li><b>인쇄:</b> 위 "🖨 인쇄하기" 버튼 탭 → 프린터 선택 후 인쇄</li>
+      <li><b>Safari 공유:</b> 하단 공유(□↑) 버튼 → "프린트" 선택</li>
+      <li><b>스크린샷 저장:</b> 전원 + 볼륨올리기 동시에 눌러 전체 캡처</li>
+      <li><b>PDF 저장:</b> "🖨 인쇄하기" 버튼 → 프린터 선택 화면에서 두 손가락으로 미리보기 화면을 확대하면 PDF로 저장 가능</li>
+    </ol>
+  </div>
+  <div id="poContent"></div>
+</div>
+
+<!-- 오류 팝업 -->
+<div class="modal-overlay" id="errorModal">
+  <div class="modal-box">
+    <div class="modal-icon">⚠️</div>
+    <div class="modal-title" id="modalTitle">입력 오류</div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <button class="modal-btn" onclick="closeModal()">확인</button>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏗</div>
+    <div class="logo-text">건설 <span>노무비</span> 산정 시스템</div>
+  </div>
+  <div class="header-right">
+    <div class="date-display" id="todayDisplay"></div>
+    <button class="btn-print" onclick="openPrint()">🖨 인쇄</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- 날짜 + 통계 -->
+  <div class="top-bar">
+    <div class="date-card">
+      <label class="card-label">📅 작업 날짜</label>
+      <input type="date" id="workDate" onchange="renderAll()">
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card c-orange">
+        <div class="stat-label">전체 노무비</div>
+        <div class="stat-value sv-orange" id="statTotal">₩0</div>
+        <div class="stat-sub" id="statSub">현장 전체 합산</div>
+      </div>
+      <div class="stat-card c-blue">
+        <div class="stat-label">총 인원</div>
+        <div class="stat-value sv-blue" id="statCount">0 명</div>
+        <div class="stat-sub" id="statSites">활성 현장 0곳</div>
+      </div>
+      <div class="stat-card c-green">
+        <div class="stat-label">1인 평균</div>
+        <div class="stat-value sv-green" id="statAvg">₩0</div>
+        <div class="stat-sub">전 현장 평균</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 현장명 설정 -->
+  <div class="site-setup-card">
+    <div class="ssc-header">현장 관리 (A ~ E)</div>
+    <div class="site-inputs-row" id="siteInputsRow"></div>
+  </div>
+
+  <!-- 현장별 합계 카드 -->
+  <div class="site-totals" id="siteTotals"></div>
+
+  <!-- 입력 폼 -->
+  <div class="input-section">
+    <div class="section-title">신규 입력</div>
+    <div class="site-picker" id="sitePicker">
+      <span class="sp-label">현장 선택</span>
+    </div>
+    <div class="input-grid">
+      <div class="fg">
+        <label>공종</label>
+        <select id="inGong">
+          <option value="">선택</option>
+          <option>토공</option><option>콘크리트공</option><option>철근공</option>
+          <option>거푸집공</option><option>조적공</option><option>미장공</option>
+          <option>타일공</option><option>방수공</option><option>도장공</option>
+          <option>목공</option><option>창호공</option><option>유리공</option>
+          <option>전기공</option><option>배관공</option><option>용접공</option>
+          <option>비계공</option><option>해체공</option><option>도배공</option>
+          <option>잡역부</option><option>기타</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>주민등록번호</label>
+        <input type="text" id="inJumin" placeholder="000000-0000000" maxlength="14" oninput="autoHyphenJumin(this)">
+      </div>
+      <div class="fg">
+        <label>이름</label>
+        <input type="text" id="inName" placeholder="홍길동">
+      </div>
+      <div class="fg">
+        <label>금액 (원)</label>
+        <input type="text" id="inAmount" placeholder="200,000" oninput="autoComma(this)">
+      </div>
+      <div class="fg">
+        <div style="height:20px"></div>
+        <button class="btn-add" onclick="addRow()">+ 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 테이블 -->
+  <div class="table-section">
+    <div class="view-tabs" id="viewTabs"></div>
+    <div class="table-header">
+      <div class="th-left">
+        <div class="section-title" style="margin-bottom:0">노무비 내역</div>
+        <div class="th-site-label" id="thSiteLabel"></div>
+      </div>
+      <div class="table-actions">
+        <button class="btn-sm btn-export" onclick="exportCSV()">📥 CSV 내보내기</button>
+        <button class="btn-sm btn-clear"  onclick="clearCurrent()">🗑 삭제</button>
+      </div>
+    </div>
+    <div class="table-scroll-wrap">
+      <div id="tableWrapper"></div>
+    </div>
+  </div>
+
+  <!-- 공종별 요약 -->
+  <div class="summary-section" id="summarySection" style="display:none">
+    <div class="section-title">공종별 합계</div>
+    <div class="summary-grid" id="summaryGrid"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════
+//  상수
+// ═══════════════════════════════════
+const SITES = ['A','B','C','D','E'];
+const COLORS = {A:'#f0a500',B:'#58a6ff',C:'#3fb950',D:'#bc8cff',E:'#ff7b7b'};
+
+// ═══════════════════════════════════
+//  상태
+// ═══════════════════════════════════
+let db         = JSON.parse(localStorage.getItem('nomubiDB3') || '{}');
+let siteNames  = JSON.parse(localStorage.getItem('nomubiN3')  || '{"A":"","B":"","C":"","D":"","E":""}');
+let inputSite  = 'A';   // 입력폼 선택 현장
+let viewSite   = 'ALL'; // 테이블 뷰
+
+// ═══════════════════════════════════
+//  초기화
+// ═══════════════════════════════════
+const today = new Date();
+const todayStr = today.toISOString().split('T')[0];
+document.getElementById('workDate').value = todayStr;
+document.getElementById('todayDisplay').textContent =
+  today.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+
+buildAll();
+renderAll();
+
+// ═══════════════════════════════════
+//  빌드 함수
+// ═══════════════════════════════════
+function buildAll() {
+  buildSiteInputs();
+  buildSitePicker();
+  buildViewTabs();
+}
+
+function buildSiteInputs() {
+  document.getElementById('siteInputsRow').innerHTML = SITES.map(s => `
+    <div class="site-input-cell">
+      <div class="sic-top">
+        <div class="sic-badge badge-${s}">${s}</div>
+        <span class="sic-letter">현장 ${s}</span>
+        <span class="sic-count" id="sic-count-${s}">0명</span>
+      </div>
+      <input class="site-name-input" type="text" id="sname-${s}"
+        placeholder="현장명 입력"
+        value="${siteNames[s]}"
+        oninput="saveSiteName('${s}')">
+    </div>`).join('');
+}
+
+function buildSitePicker() {
+  const picker = document.getElementById('sitePicker');
+  // sp-label은 유지, 버튼들만 교체
+  const existing = picker.querySelector('.sp-label');
+  picker.innerHTML = '';
+  if (existing) picker.appendChild(existing);
+  SITES.forEach(s => {
+    const name = siteNames[s] || `현장 ${s}`;
+    const btn = document.createElement('button');
+    btn.className = `spbtn spbtn-${s}${inputSite===s?' sel-'+s:''}`;
+    btn.id = `spbtn-${s}`;
+    btn.innerHTML = `<span class="dot"></span><span class="spname">${s} · ${name}</span>`;
+    btn.onclick = () => { inputSite = s; refreshPickerUI(); };
+    picker.appendChild(btn);
+  });
+}
+
+function refreshPickerUI() {
+  SITES.forEach(s => {
+    const btn = document.getElementById('spbtn-'+s);
+    if (!btn) return;
+    btn.className = `spbtn spbtn-${s}${inputSite===s?' sel-'+s:''}`;
+    btn.querySelector('.spname').textContent = `${s} · ${siteNames[s]||'현장 '+s}`;
+  });
+}
+
+function buildViewTabs() {
+  document.getElementById('viewTabs').innerHTML =
+    `<button class="vtab vt-all${viewSite==='ALL'?' active':''}" onclick="setView('ALL')">전체 보기</button>` +
+    SITES.map(s => {
+      const name = siteNames[s] || `현장 ${s}`;
+      return `<button class="vtab vt-${s}${viewSite===s?' active':''}" onclick="setView('${s}')">
+        <span class="vdot vdot-${s}"></span>${s} · ${name}
+      </button>`;
+    }).join('');
+}
+
+function setView(v) {
+  viewSite = v;
+  buildViewTabs();
+  renderTable();
+  updateSiteLabel();
+  renderSiteTotals(); // 활성 강조
+}
+
+// ═══════════════════════════════════
+//  현장명 저장
+// ═══════════════════════════════════
+function saveSiteName(s) {
+  siteNames[s] = document.getElementById('sname-'+s).value;
+  localStorage.setItem('nomubiN3', JSON.stringify(siteNames));
+  refreshPickerUI();
+  buildViewTabs();
+  renderSiteTotals();
+  updateSiteLabel();
+}
+
+// ═══════════════════════════════════
+//  데이터
+// ═══════════════════════════════════
+function getDate() { return document.getElementById('workDate').value || todayStr; }
+function key(s)    { return getDate()+'_'+s; }
+function rows(s)   { if(!db[key(s)]) db[key(s)]=[]; return db[key(s)]; }
+function allRows() { return SITES.flatMap(s => rows(s).map((r,i)=>({...r,site:s,oi:i}))); }
+function save()    { localStorage.setItem('nomubiDB3',JSON.stringify(db)); }
+
+// ═══════════════════════════════════
+//  모달
+// ═══════════════════════════════════
+function showModal(title,desc) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalDesc').textContent  = desc;
+  document.getElementById('errorModal').classList.add('show');
+}
+function closeModal() { document.getElementById('errorModal').classList.remove('show'); }
+document.getElementById('errorModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ═══════════════════════════════════
+//  입력 유틸
+// ═══════════════════════════════════
+function autoHyphenJumin(el) {
+  let v = el.value.replace(/[^0-9]/g,'');
+  if(v.length>6) v=v.slice(0,6)+'-'+v.slice(6,13);
+  el.value=v;
+}
+function autoComma(el) {
+  let v=el.value.replace(/[^0-9]/g,'');
+  el.value=v?Number(v).toLocaleString():'';
+}
+function maskJumin(j) { return(!j||j.length<8)?j:j.slice(0,8)+'******'; }
+
+// ═══════════════════════════════════
+//  행 추가
+// ═══════════════════════════════════
+function addRow() {
+  const gong   = document.getElementById('inGong').value.trim();
+  const jumin  = document.getElementById('inJumin').value.trim();
+  const name   = document.getElementById('inName').value.trim();
+  const amount = parseInt(document.getElementById('inAmount').value.replace(/,/g,''))||0;
+
+  if(!gong)   { showModal('공종 미선택','공종을 선택해주세요.'); return; }
+  if(!jumin)  { showModal('주민등록번호 미입력','주민등록번호를 입력해주세요.'); return; }
+  const jd = jumin.replace(/-/g,'');
+  if(jd.length!==13||!/^\d{13}$/.test(jd)) {
+    showModal('주민등록번호 오류','주민등록번호는 13자리 숫자로 입력해야 합니다.\n형식: 000000-0000000');
+    document.getElementById('inJumin').focus(); return;
+  }
+  if(!name)   { showModal('이름 미입력','이름을 입력해주세요.'); return; }
+  if(!amount) { showModal('금액 미입력','금액을 입력해주세요.'); return; }
+
+  rows(inputSite).push({gong,jumin,name,amount});
+  save();
+  ['inGong','inJumin','inName','inAmount'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('inGong').focus();
+  renderAll();
+}
+
+function deleteRow(s,idx) { rows(s).splice(idx,1); save(); renderAll(); }
+
+function clearCurrent() {
+  const lbl = viewSite==='ALL'?'전체 현장':`현장 ${viewSite}`;
+  if(!confirm(`[${getDate()}] ${lbl}의 내역을 모두 삭제하시겠습니까?`)) return;
+  if(viewSite==='ALL') SITES.forEach(s=>{ db[key(s)]=[]; });
+  else db[key(viewSite)]=[];
+  save(); renderAll();
+}
+
+// ═══════════════════════════════════
+//  렌더링
+// ═══════════════════════════════════
+function renderAll() {
+  updateStats();
+  renderSiteTotals();
+  updateSiteInputCounts();
+  renderTable();
+  updateSiteLabel();
+}
+
+function updateStats() {
+  const all   = allRows();
+  const total = all.reduce((s,r)=>s+r.amount,0);
+  const avg   = all.length?Math.round(total/all.length):0;
+  const actSites = SITES.filter(s=>rows(s).length>0).length;
+  document.getElementById('statTotal').textContent = '₩'+total.toLocaleString();
+  document.getElementById('statCount').textContent = all.length+' 명';
+  document.getElementById('statAvg').textContent   = '₩'+avg.toLocaleString();
+  document.getElementById('statSites').textContent = `활성 현장 ${actSites}곳`;
+}
+
+function updateSiteInputCounts() {
+  SITES.forEach(s => {
+    const el = document.getElementById('sic-count-'+s);
+    if(el) el.textContent = rows(s).length+'명';
+  });
+}
+
+function renderSiteTotals() {
+  document.getElementById('siteTotals').innerHTML = SITES.map(s => {
+    const r    = rows(s);
+    const tot  = r.reduce((a,x)=>a+x.amount,0);
+    const name = siteNames[s]||`현장 ${s}`;
+    const isActive = viewSite===s;
+    return `<div class="stc stc-${s}${isActive?' active-view':''}" onclick="setView('${s}')">
+      <div class="stc-top">
+        <div class="stc-badge">${s}</div>
+        <div class="stc-name">${name}</div>
+      </div>
+      <div class="stc-amount">₩${tot.toLocaleString()}</div>
+      <div class="stc-count">${r.length}명</div>
+    </div>`;
+  }).join('');
+}
+
+function updateSiteLabel() {
+  const el = document.getElementById('thSiteLabel');
+  if(viewSite==='ALL') {
+    el.textContent='📍 전체 현장 통합 보기';
+    el.style.color='var(--accent)';
+  } else {
+    const name=siteNames[viewSite]||`현장 ${viewSite}`;
+    el.textContent=`📍 현장 ${viewSite} · ${name}`;
+    el.style.color=COLORS[viewSite];
+  }
+}
+
+function renderTable() {
+  const wrapper = document.getElementById('tableWrapper');
+  const showAll = viewSite==='ALL';
+  const list = showAll
+    ? SITES.flatMap(s=>rows(s).map((r,i)=>({...r,site:s,oi:i})))
+    : rows(viewSite).map((r,i)=>({...r,site:viewSite,oi:i}));
+
+  if(!list.length) {
+    wrapper.innerHTML=`<div class="empty-state"><div class="ei">📋</div><p>입력된 노무비 내역이 없습니다.<br>위 입력폼에서 현장을 선택 후 추가하세요.</p></div>`;
+    document.getElementById('summarySection').style.display='none';
+    return;
+  }
+
+  const total=list.reduce((s,r)=>s+r.amount,0);
+  const colspan=showAll?5:4;
+
+  let html=`<table><thead><tr>
+    <th>순서</th>
+    ${showAll?'<th class="th-site-col">현장</th>':''}
+    <th>공종</th><th>주민등록번호</th><th>이름</th>
+    <th style="text-align:right">금액</th><th>삭제</th>
+  </tr></thead><tbody>`;
+
+  list.forEach((r,i)=>{
+    const sn=siteNames[r.site]||`현장 ${r.site}`;
+    html+=`<tr>
+      <td>${i+1}</td>
+      ${showAll?`<td><span class="tag-site ts-${r.site}" title="${sn}">${r.site}</span></td>`:''}
+      <td><span class="tag-gong">${r.gong}</span></td>
+      <td><span class="juminno">${maskJumin(r.jumin)}</span></td>
+      <td>${r.name}</td>
+      <td class="amount-cell">₩${r.amount.toLocaleString()}</td>
+      <td><button class="btn-delete" onclick="deleteRow('${r.site}',${r.oi})">삭제</button></td>
+    </tr>`;
+  });
+
+  html+=`</tbody><tfoot><tr class="total-row">
+    <td colspan="${colspan}" style="text-align:right;font-size:12px;letter-spacing:1px;padding-right:16px;">합　계</td>
+    <td class="amount-cell" style="font-size:16px;">₩${total.toLocaleString()}</td><td></td>
+  </tr></tfoot></table>`;
+  wrapper.innerHTML=html;
+
+  // 공종별 요약
+  const byG={};
+  list.forEach(r=>{ if(!byG[r.gong]) byG[r.gong]={c:0,t:0}; byG[r.gong].c++; byG[r.gong].t+=r.amount; });
+  document.getElementById('summaryGrid').innerHTML=Object.entries(byG).map(([k,v])=>
+    `<div class="summary-item"><div><div class="s-name">${k}</div><div class="s-sub">${v.c}명</div></div><div class="s-val">₩${v.t.toLocaleString()}</div></div>`
+  ).join('');
+  document.getElementById('summarySection').style.display='block';
+}
+
+// ═══════════════════════════════════
+//  CSV 내보내기 (iOS Safari 대응)
+// ═══════════════════════════════════
+function exportCSV() {
+  const d=getDate();
+  const showAll=viewSite==='ALL';
+  const list=showAll
+    ? SITES.flatMap(s=>rows(s).map((r,i)=>({...r,site:s,oi:i})))
+    : rows(viewSite).map((r,i)=>({...r,site:viewSite,oi:i}));
+  if(!list.length){ showModal('내보내기 오류','내보낼 데이터가 없습니다.'); return; }
+
+  const fileLabel=showAll?'전체':`현장${viewSite}_${siteNames[viewSite]||''}`;
+  let csv=`\uFEFF작업일,${d}\n`;
+  SITES.forEach(s=>{ if(siteNames[s]) csv+=`현장 ${s},${siteNames[s]}\n`; });
+  csv+='\n순서,현장,현장명,공종,주민등록번호,이름,금액\n';
+  list.forEach((r,i)=>{
+    csv+=`${i+1},${r.site},${siteNames[r.site]||''},${r.gong},${r.jumin},${r.name},${r.amount}\n`;
+  });
+  csv+=`,,,,,,합계,${list.reduce((s,r)=>s+r.amount,0)}\n`;
+
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+
+  // iOS Safari: a.click()의 download 속성 미동작 → window.open으로 대응
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS) {
+    // iOS는 CSV를 직접 열 수 없으므로 텍스트로 보여주는 안내 모달
+    showCSVModal(csv, `노무비_${fileLabel}_${d}.csv`);
+  } else {
+    const a=document.createElement('a');
+    a.href=url; a.download=`노무비_${fileLabel}_${d}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+}
+
+function showCSVModal(csvText, filename) {
+  // iOS용: 텍스트를 복사할 수 있는 모달 표시
+  const existing = document.getElementById('csvModal');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id='csvModal';
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
+
+  const box = document.createElement('div');
+  box.style.cssText='background:#161b22;border:1px solid #30363d;border-radius:12px;padding:24px;width:100%;max-width:480px;max-height:80vh;display:flex;flex-direction:column;gap:12px';
+
+  box.innerHTML=`
+    <div style="font-size:16px;font-weight:800;color:#e6edf3">📋 CSV 데이터 (${filename})</div>
+    <div style="font-size:12px;color:#8b949e;line-height:1.5">아래 내용을 <b style="color:#f0a500">전체 선택 → 복사</b>한 뒤, 메모 앱이나 Numbers에 붙여넣기 하세요.</div>
+    <textarea id="csvTextarea" readonly style="background:#0d1117;border:1px solid #30363d;color:#e6edf3;font-family:monospace;font-size:11px;padding:12px;border-radius:6px;width:100%;height:200px;resize:none;-webkit-user-select:all;user-select:all">${csvText}</textarea>
+    <div style="display:flex;gap:8px">
+      <button onclick="selectAllCSV()" style="flex:1;background:#f0a500;color:#000;border:none;padding:11px;border-radius:7px;font-weight:700;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer">전체 선택</button>
+      <button onclick="document.getElementById('csvModal').remove()" style="flex:1;background:#30363d;color:#e6edf3;border:none;padding:11px;border-radius:7px;font-weight:700;font-size:14px;font-family:'Noto Sans KR',sans-serif;cursor:pointer">닫기</button>
+    </div>`;
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
+  setTimeout(()=>selectAllCSV(),100);
+}
+
+function selectAllCSV() {
+  const ta=document.getElementById('csvTextarea');
+  if(!ta) return;
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch(e){}
+}
+
+// ═══════════════════════════════════
+//  인쇄 오버레이 (iOS Safari 대응)
+// ═══════════════════════════════════
+function openPrint() {
+  const d=getDate();
+  const list=viewSite==='ALL'
+    ? SITES.flatMap(s=>rows(s).map((r,i)=>({...r,site:s,oi:i})))
+    : rows(viewSite).map((r,i)=>({...r,site:viewSite,oi:i}));
+
+  if(!list.length){ showModal('인쇄 오류','인쇄할 데이터가 없습니다.'); return; }
+
+  const siteLabelText = viewSite==='ALL'
+    ? '전체 현장'
+    : `현장 ${viewSite}${siteNames[viewSite]?' · '+siteNames[viewSite]:''}`;
+
+  const total=list.reduce((s,r)=>s+r.amount,0);
+
+  document.getElementById('poMeta').innerHTML=
+    `<b>작업일:</b> ${d}&nbsp; | &nbsp;<b>현장:</b> ${siteLabelText}&nbsp; | &nbsp;<b>총 인원:</b> ${list.length}명&nbsp; | &nbsp;<b>총 노무비:</b> ₩${total.toLocaleString()}`;
+
+  const showAll=viewSite==='ALL';
+
+  // 공종별 요약
+  const byG={};
+  list.forEach(r=>{ if(!byG[r.gong]) byG[r.gong]={c:0,t:0}; byG[r.gong].c++; byG[r.gong].t+=r.amount; });
+
+  // ★ 모든 글자색을 인라인 style로 #111 명시 (Safari print 색상 강제)
+  let html=`<table class="po-table"><thead><tr style="background:#eeeeee">
+    <th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa">순서</th>
+    ${showAll?'<th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa">현장</th>':''}
+    <th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa">공종</th>
+    <th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa">주민등록번호</th>
+    <th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa">이름</th>
+    <th style="color:#111111;background:#eeeeee;border:1px solid #aaaaaa;text-align:right">금액</th>
+  </tr></thead><tbody>`;
+
+  list.forEach((r,i)=>{
+    const bg=i%2===0?'#ffffff':'#f7f7f7';
+    html+=`<tr style="background:${bg}">
+      <td style="text-align:center;color:#111111;border:1px solid #cccccc">${i+1}</td>
+      ${showAll?`<td style="text-align:center;font-weight:700;color:#111111;border:1px solid #cccccc">${r.site}${siteNames[r.site]?'<br><span style="font-size:10px;font-weight:400;color:#555555">'+siteNames[r.site]+'</span>':''}</td>`:''}
+      <td style="color:#111111;border:1px solid #cccccc">${r.gong}</td>
+      <td style="font-family:monospace;font-size:12px;color:#444444;border:1px solid #cccccc">${maskJumin(r.jumin)}</td>
+      <td style="color:#111111;font-weight:600;border:1px solid #cccccc">${r.name}</td>
+      <td style="text-align:right;font-weight:600;color:#111111;border:1px solid #cccccc">₩${r.amount.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  html+=`</tbody><tfoot><tr style="background:#fff8e1">
+    <td colspan="${showAll?5:4}" style="text-align:right;font-weight:800;color:#333333;background:#fff8e1;border:1px solid #aaaaaa;padding:9px 10px">합&nbsp;&nbsp;계</td>
+    <td style="text-align:right;font-weight:800;color:#111111;background:#fff8e1;border:1px solid #aaaaaa;padding:9px 10px">₩${total.toLocaleString()}</td>
+  </tr></tfoot></table>`;
+
+  // 공종별 합계
+  html+=`<hr style="border:none;border-top:1px solid #dddddd;margin:16px 0">
+  <div style="font-size:13px;font-weight:700;color:#333333;margin-bottom:8px">공종별 합계</div>
+  <div class="po-summary">${Object.entries(byG).map(([k,v])=>
+    `<div class="po-sum-item"><span style="color:#333333">${k}<br><small style="color:#666666">${v.c}명</small></span><b style="color:#111111">₩${v.t.toLocaleString()}</b></div>`
+  ).join('')}</div>`;
+
+  // 현장별 소계 (전체보기일 때)
+  if(showAll) {
+    const activeSites=SITES.filter(s=>rows(s).length>0);
+    if(activeSites.length>1){
+      html+=`<hr style="border:none;border-top:1px solid #dddddd;margin:16px 0">
+      <div style="font-size:13px;font-weight:700;color:#333333;margin-bottom:8px">현장별 합계</div>
+      <div class="po-summary">`;
+      activeSites.forEach(s=>{
+        const sr=rows(s); const st=sr.reduce((a,r)=>a+r.amount,0);
+        const sn=siteNames[s]||`현장 ${s}`;
+        html+=`<div class="po-sum-item"><span style="color:#333333"><b style="color:#111111">${s}</b> · ${sn}<br><small style="color:#666666">${sr.length}명</small></span><b style="color:#111111">₩${st.toLocaleString()}</b></div>`;
+      });
+      html+=`</div>`;
+    }
+  }
+
+  document.getElementById('poContent').innerHTML=html;
+  document.getElementById('printOverlay').classList.add('show');
+  window.scrollTo(0,0);
+}
+
+function closePrint() {
+  document.getElementById('printOverlay').classList.remove('show');
+}
+
+function doPrint() {
+  const d = getDate();
+  const list = viewSite==='ALL'
+    ? SITES.flatMap(s=>rows(s).map((r,i)=>({...r,site:s,oi:i})))
+    : rows(viewSite).map((r,i)=>({...r,site:viewSite,oi:i}));
+
+  if(!list.length){ showModal('인쇄 오류','인쇄할 데이터가 없습니다.'); return; }
+
+  const showAll = viewSite==='ALL';
+  const total   = list.reduce((s,r)=>s+r.amount,0);
+  const siteLbl = viewSite==='ALL'
+    ? '전체 현장'
+    : `현장 ${viewSite}${siteNames[viewSite]?' · '+siteNames[viewSite]:''}`;
+
+  // 공종별 / 현장별 집계
+  const byG={};
+  list.forEach(r=>{ if(!byG[r.gong]) byG[r.gong]={c:0,t:0}; byG[r.gong].c++; byG[r.gong].t+=r.amount; });
+
+  // ── 테이블 행 ──
+  let rows_html='';
+  list.forEach((r,i)=>{
+    const bg=i%2===0?'#ffffff':'#f7f7f7';
+    rows_html+=`<tr style="background:${bg}">
+      <td style="text-align:center;border:1px solid #ccc;padding:8px;color:#111">${i+1}</td>
+      ${showAll?`<td style="text-align:center;font-weight:700;border:1px solid #ccc;padding:8px;color:#111">${r.site}${siteNames[r.site]?'<br><span style="font-size:10px;font-weight:400;color:#555">'+siteNames[r.site]+'</span>':''}</td>`:''}
+      <td style="border:1px solid #ccc;padding:8px;color:#111">${r.gong}</td>
+      <td style="font-family:monospace;font-size:12px;border:1px solid #ccc;padding:8px;color:#555">${maskJumin(r.jumin)}</td>
+      <td style="font-weight:600;border:1px solid #ccc;padding:8px;color:#111">${r.name}</td>
+      <td style="text-align:right;font-weight:600;border:1px solid #ccc;padding:8px;color:#111">₩${r.amount.toLocaleString()}</td>
+    </tr>`;
+  });
+
+  // ── 공종별 합계 ──
+  let gong_html=Object.entries(byG).map(([k,v])=>
+    `<div style="border:1px solid #ccc;border-radius:6px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;background:#fff">
+      <span style="font-size:12px;color:#333">${k}<br><small style="color:#777">${v.c}명</small></span>
+      <b style="font-size:12px;color:#111">₩${v.t.toLocaleString()}</b>
+    </div>`
+  ).join('');
+
+  // ── 현장별 합계 ──
+  let site_html='';
+  if(showAll){
+    const actS=SITES.filter(s=>rows(s).length>0);
+    if(actS.length>1){
+      site_html=`<hr style="border:none;border-top:1px solid #ddd;margin:16px 0">
+      <div style="font-size:14px;font-weight:700;color:#222;margin-bottom:8px">현장별 합계</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:16px">
+      ${actS.map(s=>{
+        const sr=rows(s);const st=sr.reduce((a,r)=>a+r.amount,0);const sn=siteNames[s]||`현장 ${s}`;
+        return `<div style="border:1px solid #ccc;border-radius:6px;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;background:#fff">
+          <span style="font-size:12px;color:#333"><b style="color:#111">${s}</b> · ${sn}<br><small style="color:#777">${sr.length}명</small></span>
+          <b style="font-size:12px;color:#111">₩${st.toLocaleString()}</b>
+        </div>`;
+      }).join('')}</div>`;
+    }
+  }
+
+  // ── 완전한 독립 HTML 문서 생성 (html2canvas 이미지 저장 방식) ──
+  const printHTML=`<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>건설 노무비 산정서 ${d}</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif;background:#f8f8f8;color:#111;padding:14px;font-size:13px;}
+  .btn-wrap{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+  .btn{padding:12px 18px;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;}
+  .btn-save{background:#1a7f37;color:#fff;}
+  .btn-gray{background:#666;color:#fff;}
+  .hint{background:#e8f4fd;border:1px solid #b8d4ee;border-radius:8px;padding:12px 14px;margin-bottom:12px;font-size:12px;color:#1a4a7a;line-height:1.8;}
+  .hint strong{color:#0d3560;display:block;margin-bottom:4px;}
+  .hint ol{padding-left:16px;}
+  .hint li{margin-bottom:2px;}
+  #printArea{background:#fff;padding:14px;border-radius:8px;}
+  h1{font-size:16px;font-weight:900;color:#111;margin-bottom:6px;}
+  .meta{font-size:11px;color:#333;margin-bottom:12px;line-height:1.9;border-bottom:2px solid #222;padding-bottom:8px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px;font-size:11px;}
+  th{background:#eeeeee;border:1px solid #999;padding:7px 8px;text-align:left;font-weight:700;color:#111;}
+  td{border:1px solid #ccc;padding:7px 8px;color:#111;}
+  .even td{background:#f7f7f7;}
+  .total-row td{background:#fff8e1;font-weight:800;color:#111;}
+  .sec{font-size:12px;font-weight:700;color:#222;margin:10px 0 6px;}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px;}
+  .card{border:1px solid #ccc;border-radius:5px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;background:#fff;}
+  .card-label{font-size:11px;color:#333;}
+  .card-val{font-size:11px;font-weight:700;color:#111;}
+  #statusMsg{margin-top:10px;padding:10px 14px;border-radius:7px;font-size:13px;font-weight:600;text-align:center;display:none;}
+  #statusMsg.ok{background:#d4edda;color:#155724;border:1px solid #c3e6cb;}
+  #statusMsg.err{background:#f8d7da;color:#721c24;border:1px solid #f5c6cb;}
+  #imgResult{margin-top:10px;}
+  #imgResult img{width:100%;border:1px solid #ccc;border-radius:6px;display:block;}
+  #imgResult .img-tip{font-size:11px;color:#555;text-align:center;margin-top:6px;padding:8px;background:#fffde7;border-radius:5px;}
+</style>
+</head>
+<body>
+<div class="btn-wrap">
+  <button class="btn btn-save" id="btnSave" onclick="saveAsImage()">📸 이미지로 저장</button>
+  <button class="btn btn-gray" onclick="window.close();history.back();">✕ 닫기</button>
+</div>
+<div class="hint">
+  <strong>📱 저장 방법</strong>
+  <ol>
+    <li><b>📸 이미지로 저장</b> 버튼을 탭하세요</li>
+    <li>아래에 이미지가 생성되면 <b>이미지를 길게 누르세요</b></li>
+    <li><b>"사진에 추가"</b> 또는 <b>"파일에 저장"</b> 선택</li>
+  </ol>
+</div>
+<div id="printArea">
+  <h1>🏗 건설 노무비 산정서</h1>
+  <div class="meta">
+    작업일: <b>${d}</b>&nbsp; | &nbsp;현장: <b>${siteLbl}</b><br>
+    총 인원: <b>${list.length}명</b>&nbsp; | &nbsp;총 노무비: <b>₩${total.toLocaleString()}</b>
+  </div>
+  <table>
+    <thead><tr>
+      <th>No</th>
+      ${showAll?'<th>현장</th>':''}
+      <th>공종</th><th>주민등록번호</th><th>이름</th>
+      <th style="text-align:right">금액</th>
+    </tr></thead>
+    <tbody>${rows_html}</tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="${showAll?5:4}" style="text-align:right;font-weight:800;color:#111">합&nbsp;계</td>
+        <td style="text-align:right;font-weight:800;color:#111">₩${total.toLocaleString()}</td>
+      </tr>
+    </tfoot>
+  </table>
+  <div class="sec">공종별 합계</div>
+  <div class="grid">${gong_html}</div>
+  ${site_html}
+</div>
+<div id="statusMsg"></div>
+<div id="imgResult"></div>
+<script>
+function saveAsImage(){
+  var btn=document.getElementById('btnSave');
+  var msg=document.getElementById('statusMsg');
+  var res=document.getElementById('imgResult');
+  btn.disabled=true; btn.textContent='⏳ 생성 중...';
+  msg.style.display='block'; msg.className=''; msg.textContent='이미지를 생성하고 있습니다...';
+  res.innerHTML='';
+  html2canvas(document.getElementById('printArea'),{
+    scale:2, useCORS:true, backgroundColor:'#ffffff', logging:false,
+    windowWidth: document.getElementById('printArea').scrollWidth
+  }).then(function(canvas){
+    msg.className='ok';
+    msg.textContent='✅ 완료! 아래 이미지를 길게 눌러 저장하세요.';
+    var img=document.createElement('img');
+    img.src=canvas.toDataURL('image/png');
+    var tip=document.createElement('div');
+    tip.className='img-tip';
+    tip.textContent='👆 이미지를 길게 누르면 저장 메뉴가 나옵니다';
+    res.appendChild(img);
+    res.appendChild(tip);
+    btn.disabled=false; btn.textContent='📸 이미지로 저장';
+    setTimeout(function(){ res.scrollIntoView({behavior:'smooth'}); },200);
+  }).catch(function(e){
+    msg.className='err'; msg.textContent='오류: '+e.message;
+    btn.disabled=false; btn.textContent='📸 이미지로 저장';
+  });
+}
+<\/script>
+</body>
+</html>`;
+
+  // 새 탭 열고 document.write로 주입 (iOS blob 차단 우회)
+  const newTab = window.open('', '_blank');
+  if (newTab) {
+    newTab.document.open();
+    newTab.document.write(printHTML);
+    newTab.document.close();
+  } else {
+    // 팝업 차단 시: 현재 페이지 교체
+    document.open();
+    document.write(printHTML);
+    document.close();
+  }
+}
+
+
+// ═══════════════════════════════════
+//  카카오톡 인앱브라우저 감지
+// ═══════════════════════════════════
+(function detectKakao() {
+  const ua = navigator.userAgent || '';
+  const isKakao = /KAKAOTALK/i.test(ua) || /kakao/i.test(ua);
+
+  // 추가: 카카오 외 제한적 인앱브라우저도 감지 (Instagram, Facebook 등)
+  const isInApp = isKakao
+    || /Instagram/i.test(ua)
+    || /FBAV/i.test(ua)
+    || /FBAN/i.test(ua)
+    || /Line\//.test(ua)
+    || /NAVER/i.test(ua);
+
+  if (isKakao || isInApp) {
+    const banner = document.getElementById('kakaoBanner');
+    if (banner) banner.classList.add('show');
+
+    // 배너 높이만큼 header top 보정
+    setTimeout(function() {
+      const h = banner ? banner.offsetHeight : 0;
+      const header = document.querySelector('header');
+      if (header) header.style.top = h + 'px';
+    }, 100);
+  }
+})();
+
+function dismissKakaoBanner() {
+  const banner = document.getElementById('kakaoBanner');
+  if (banner) banner.classList.remove('show');
+  const header = document.querySelector('header');
+  if (header) header.style.top = '0';
+}
+
+function copyUrlForSafari() {
+  const url = window.location.href;
+  const copied = document.getElementById('kbCopied');
+
+  // 클립보드 복사 시도
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(function() {
+      showCopied();
+    }).catch(function() {
+      fallbackCopy(url);
+    });
+  } else {
+    fallbackCopy(url);
+  }
+}
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:-999px;left:-999px;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    showCopied();
+  } catch(e) {
+    // 복사 실패 시 직접 보여주기
+    prompt('아래 주소를 복사해서 Safari에 붙여넣으세요:', text);
+  }
+  document.body.removeChild(ta);
+}
+
+function showCopied() {
+  const el = document.getElementById('kbCopied');
+  if (el) {
+    el.classList.add('show');
+    setTimeout(function() { el.classList.remove('show'); }, 3000);
+  }
+}
+
+// Enter 키
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&['inGong','inJumin','inName','inAmount'].includes(e.target.id)) addRow();
+});
+</script>
+</body>
+</html>
